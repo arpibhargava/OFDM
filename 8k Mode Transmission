@@ -1,0 +1,54 @@
+#Matlab Code for 8k Mode Transmission: 
+
+%DVB-T 8k Transmission - 16 QAM
+%Numerical values of the OFDM Parameters for 8k mode
+Tu=896e-6; %Duration of symbol part
+T=Tu/8192; %baseband elementary period
+G=1/8; %allowed guard interval having choice of 1/4, 1/8, 1/16, and 1/32
+delta=G*Tu; %Duration of guard interval
+Ts=delta+Tu; %total symbol duration
+Kmax=6816; %maximum number of carrier numbers
+Kmin=0; %minimum value of carrier number
+f=16384; %IFFT/FFT length
+fc=10/T; %to get carrier frequency close to 90Mhz
+Rs=4*fc; %simulation period
+t=0:1/Rs:Tu;
+ 
+%Data generator (A)
+K=Kmax+1;                   %Number of carriers
+rand('state',0);
+x=-1+2*round(rand(K,1)).'+1i*(-1+2*round(rand(K,1))).'; % generating 1705 random values
+B=length(x);    
+J=zeros(f,1); %4096 real and complex values
+J(1:(B/2)) = [ x(1:(B/2)).']; %Zero padding
+J((f-((B/2)-1)):f) = ( x(((B/2)+1):B).'); %4096 - 1705 = 2391 zeros
+ca=f.*ifft(J,f);        %Subcarriers generation (B)
+ 
+% D/A simulation
+lenth = length(ca);
+C = [ ca.';zeros((2*10)-1,lenth)];
+range=1/Rs:1/Rs:T/2;
+g=ones(length(range),1); %pulse shape
+D=conv(g,C(:));
+z=(D(1:length(t))); % (C) 
+ff=(Rs)*(1:(10*f))/(10*f);
+[x,y] = butter(13,1/20); %butterworth filter of order 13
+uoft = filter(x,y,z); %baseband signal (D)
+s_tilde=(uoft.').*exp(1i*2*pi*fc*t);    %operation for IFFT process
+s=real(s_tilde); %passband signal (E)
+figure(1);
+plot(t(80:480),s(80:480));
+grid on;
+ylabel('Amplitude')
+xlabel('Time (sec)')
+title('S(t)')
+figure(2);
+subplot(211);
+plot(ff,abs(fft(s,10*f))/f);
+axis([0e8 18e7 0 25]);
+grid on;
+ylabel('Amplitude')
+xlabel('Frequency (Hz)')
+title('S(t) FFT')
+subplot(212);
+pwelch(s,[],[],[],Rs);
